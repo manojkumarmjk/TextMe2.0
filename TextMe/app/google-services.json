@@ -1,0 +1,56 @@
+{
+  "project_info": {
+    "project_number": "103202411620",
+    "firebase_url": "https://textme-ddf11-default-rtdb.firebaseio.com",
+    "project_id": "textme-ddf11",
+    "storage_bucket": "textme-ddf11.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:103202411620:android:eda3b94c57adfe6563fb71",
+        "android_client_info": {
+          "package_name": "com.bymjk.txtme"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "103202411620-tk9o8v12scu54pel3gnuroin1855rf36.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bymjk.txtme",
+            "certificate_hash": "77da59b71acb720a11398a1fcc22c82debceed0f"
+          }
+        },
+        {
+          "client_id": "103202411620-tp2ds0ljor8co4rberqd828p1fji24ks.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bymjk.txtme",
+            "certificate_hash": "0ebbba6d37827754c98309914029f030206de696"
+          }
+        },
+        {
+          "client_id": "103202411620-6s109muebc6b6u3lbk4s098vlfp2sjkg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCugSA431icqh1lbc15JLw68hQhEzvctc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "103202411620-6s109muebc6b6u3lbk4s098vlfp2sjkg.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
