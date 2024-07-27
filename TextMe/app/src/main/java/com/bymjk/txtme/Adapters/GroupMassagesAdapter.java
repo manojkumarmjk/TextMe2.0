@@ -9,12 +9,10 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.bymjk.txtme.Models.Massage;
+import com.bymjk.txtme.Models.Message;
 import com.bymjk.txtme.Models.User;
 import com.bymjk.txtme.R;
-import com.bymjk.txtme.databinding.ItemRecieveBinding;
 import com.bymjk.txtme.databinding.ItemRecieveGroupBinding;
-import com.bymjk.txtme.databinding.ItemSentBinding;
 import com.bymjk.txtme.databinding.ItemSentGroupBinding;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -27,14 +25,14 @@ import java.util.ArrayList;
 public class GroupMassagesAdapter extends RecyclerView.Adapter {
 
     Context context;
-    ArrayList<Massage> massages;
+    ArrayList<Message> messages;
     final int ITEM_SENT = 1;
     final int ITEM_RECEIVE = 2;
 
 
-    public GroupMassagesAdapter(Context context, ArrayList<Massage> massages) {
+    public GroupMassagesAdapter(Context context, ArrayList<Message> messages) {
         this.context = context;
-        this.massages = massages;
+        this.messages = messages;
 
 
     }
@@ -54,12 +52,12 @@ public class GroupMassagesAdapter extends RecyclerView.Adapter {
 
     @Override
     public int getItemViewType(int position) {
-        Massage massage = massages.get(position);
+        Message message = messages.get(position);
         if(FirebaseAuth.getInstance().getUid() != null) {
-            if (FirebaseAuth.getInstance().getUid().equals(massage.getSenderId())) {
+            if (FirebaseAuth.getInstance().getUid().equals(message.getSenderId())) {
                 return ITEM_SENT;
             }
-            else if(!FirebaseAuth.getInstance().getUid().equals(massage.getSenderId())){
+            else if(!FirebaseAuth.getInstance().getUid().equals(message.getSenderId())){
                 return ITEM_RECEIVE;
             }
         }
@@ -68,7 +66,7 @@ public class GroupMassagesAdapter extends RecyclerView.Adapter {
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        Massage massage = massages.get(position);
+        Message message = messages.get(position);
 
        /* int reactions[] = new int[]{
                 R.drawable.ic_fb_like,
@@ -94,11 +92,11 @@ public class GroupMassagesAdapter extends RecyclerView.Adapter {
                 viewHolder.binding.feeling.setVisibility(View.VISIBLE);
 
             }
-            massage.setFeeling(pos);
+            message.setFeeling(pos);
 
             FirebaseDatabase.getInstance().getReference()
                     .child("public")
-                    .child(massage.getMassageId()).setValue(massage);
+                    .child(message.getMassageId()).setValue(message);
 
             return true; // true is closing popup, false is requesting a new selection
         });*/
@@ -109,7 +107,7 @@ public class GroupMassagesAdapter extends RecyclerView.Adapter {
             FirebaseDatabase.getInstance()
                     .getReference()
                     .child("users")
-                    .child(massage.getSenderId())
+                    .child(message.getSenderId())
                     .addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -127,20 +125,20 @@ public class GroupMassagesAdapter extends RecyclerView.Adapter {
                         }
                     });
 
-            if (massage.getMassage().equals("photo")){
+            if (message.getMassage().equals("photo")){
                 viewHolder.binding.image.setVisibility(View.VISIBLE);
                 viewHolder.binding.senderText.setVisibility(View.GONE);
                 Glide.with(context)
-                        .load(massage.getImageUrl())
+                        .load(message.getImageUrl())
                         .placeholder(R.drawable.placeholderimg2)
                         .into(viewHolder.binding.image);
             }
 
-            viewHolder.binding.senderText.setText(massage.getMassage());
+            viewHolder.binding.senderText.setText(message.getMassage());
 
-          /*  if(massage.getFeeling() >= 0){
-//                massage.setFeeling(reactions[massage.getFeeling()]);
-                viewHolder.binding.feeling.setImageResource(reactions[massage.getFeeling()]);
+          /*  if(message.getFeeling() >= 0){
+//                message.setFeeling(reactions[message.getFeeling()]);
+                viewHolder.binding.feeling.setImageResource(reactions[message.getFeeling()]);
                 viewHolder.binding.feeling.setVisibility(View.VISIBLE);
             }
             else{
@@ -158,11 +156,11 @@ public class GroupMassagesAdapter extends RecyclerView.Adapter {
         else{
             ReceiverViewHolder viewHolder = (ReceiverViewHolder) holder;
 
-            if (massage.getMassage().equals("photo")){
+            if (message.getMassage().equals("photo")){
                 viewHolder.binding.image.setVisibility(View.VISIBLE);
                 viewHolder.binding.recieverText.setVisibility(View.GONE);
                 Glide.with(context)
-                        .load(massage.getImageUrl())
+                        .load(message.getImageUrl())
                         .placeholder(R.drawable.placeholderimg2)
                         .into(viewHolder.binding.image);
             }
@@ -170,7 +168,7 @@ public class GroupMassagesAdapter extends RecyclerView.Adapter {
             FirebaseDatabase.getInstance()
                     .getReference()
                     .child("users")
-                    .child(massage.getSenderId())
+                    .child(message.getSenderId())
                     .addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -188,10 +186,10 @@ public class GroupMassagesAdapter extends RecyclerView.Adapter {
                         }
                     });
 
-            viewHolder.binding.recieverText.setText(massage.getMassage());
+            viewHolder.binding.recieverText.setText(message.getMassage());
 
-         /*   if(massage.getFeeling() >= 0){
-                viewHolder.binding.feeling.setImageResource(reactions[massage.getFeeling()]);
+         /*   if(message.getFeeling() >= 0){
+                viewHolder.binding.feeling.setImageResource(reactions[message.getFeeling()]);
                 viewHolder.binding.feeling.setVisibility(View.VISIBLE);
             }
             else{
@@ -210,7 +208,7 @@ public class GroupMassagesAdapter extends RecyclerView.Adapter {
 
     @Override
     public int getItemCount() {
-        return massages.size();
+        return messages.size();
     }
 
     public class SentViewHolder extends RecyclerView.ViewHolder{

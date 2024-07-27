@@ -6,17 +6,25 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.bymjk.txtme.R;
 import com.bymjk.txtme.databinding.ActivityChatsBinding;
 import com.bymjk.txtme.databinding.ActivityUserProfileBinding;
+import com.davemorrissey.labs.subscaleview.ImageSource;
+import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -36,7 +44,7 @@ public class UserProfile_Activity extends AppCompatActivity {
 
     String profile;
     String name;
-    String phoneNumber;
+    String phoneNumber, token;
     String uid, senderId, senderRoom ;
 
     @Override
@@ -49,13 +57,10 @@ public class UserProfile_Activity extends AppCompatActivity {
             getSupportActionBar().hide();
         }
 
-
-
-
         name = getIntent().getStringExtra("name");
         phoneNumber = getIntent().getStringExtra("phonenumber");
-
-
+        uid = getIntent().getStringExtra("uid");
+        token = getIntent().getStringExtra("token");
 
 
         binding.UserName.setText(name);
@@ -118,13 +123,50 @@ public class UserProfile_Activity extends AppCompatActivity {
                 .placeholder(R.drawable.avatar)
                 .into(binding.UserprofileImage);
 
+        binding.UserprofileImage.setOnClickListener(v -> openImageViewerDialog(profile));
+
+
         binding.chatsBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(UserProfile_Activity.this,ChatsActivity.class);
+                Intent intent = new Intent(UserProfile_Activity.this, ChatsActivity.class);
+                intent.putExtra("name",name);
+                intent.putExtra("image",profile);
+                intent.putExtra("phonenumber",phoneNumber);
+                intent.putExtra("uid" ,uid);
+                intent.putExtra("token",token);
                 startActivity(intent);
             }
         });
+    }
+
+    private void openImageViewerDialog(String s) {
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.setContentView(R.layout.dialog_full_image);
+        SubsamplingScaleImageView fullImageView = dialog.findViewById(R.id.fullImageView);
+        ImageButton closeButton = dialog.findViewById(R.id.closeButton);
+
+        // Load the image into the SubsamplingScaleImageView using Glide
+        Glide.with(this)
+                .asBitmap()
+                .load(s)
+                .placeholder(R.drawable.placeholderimg2)
+                .into(new CustomTarget<Bitmap>() {
+                    @Override
+                    public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+                        fullImageView.setImage(ImageSource.bitmap(resource));
+                    }
+
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                        // Handle placeholder
+                    }
+                });
+
+        // Set the click listener for the close button
+        closeButton.setOnClickListener(view -> dialog.dismiss());
+
+        dialog.show();
     }
 
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {

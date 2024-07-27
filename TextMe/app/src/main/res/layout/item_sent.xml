@@ -3,53 +3,92 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_marginTop="5dp"
+    android:layout_height="wrap_content"
     android:layout_gravity="end"
-    android:layout_marginEnd="10dp"
     android:layout_marginStart="75dp"
-    android:layout_height="wrap_content">
+    android:layout_marginTop="5dp"
+    android:layout_marginEnd="10dp">
 
     <LinearLayout
         android:id="@+id/linearLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="5dp"
-        android:layout_marginBottom="5dp"
         android:layout_marginStart="5dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="1dp"
         android:background="@drawable/sent_drawable"
+        android:elevation="1dp"
         android:orientation="vertical"
-        android:elevation="2dp"
-        app:layout_constraintHorizontal_bias="0.98"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.98"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <ImageView
-            android:id="@+id/Sender_image"
+        <androidx.cardview.widget.CardView
+            android:id="@+id/Sender_imageCardView"
             android:layout_width="240dp"
             android:layout_height="230dp"
             android:layout_margin="6dp"
-            android:scaleType="fitXY"
-            android:layout_gravity="center"
+            app:cardCornerRadius="5dp"
             android:visibility="gone"
+            app:cardElevation="0dp">
+        <ImageView
+            android:id="@+id/Sender_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:scaleType="centerCrop"
             app:srcCompat="@drawable/avatar" />
+        </androidx.cardview.widget.CardView>
 
         <TextView
             android:id="@+id/sender_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:maxWidth="280dp"
-            android:fontFamily="@font/helvetica"
-            android:paddingStart="15dp"
             android:layout_gravity="center"
+            android:layout_marginEnd="0dp"
+            android:fontFamily="@font/poppins_light"
+            android:paddingStart="15dp"
             android:paddingTop="5dp"
+            android:paddingEnd="33dp"
             android:paddingBottom="5dp"
             android:text="@string/chats"
-            android:textColor="#101A21"
+            android:textColor="#0D507F"
             android:textSize="18sp"
             android:visibility="visible" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="-10dp"
+            android:paddingLeft="5dp">
+
+            <TextView
+                android:id="@+id/sender_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginEnd="4dp"
+                android:fontFamily="@font/poppins"
+                android:paddingTop="2dp"
+                android:text="11:50 PM"
+                android:textColor="#0D507F"
+                android:textSize="10sp"
+                android:visibility="visible" />
+
+            <ImageView
+                android:id="@+id/message_status"
+                android:layout_width="15dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="2dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/single_tick" />
+
+        </LinearLayout>
+
 
     </LinearLayout>
 
@@ -58,10 +97,11 @@
         android:layout_width="16dp"
         android:layout_height="16dp"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@+id/linearLayout"
-        app:layout_constraintEnd_toStartOf="@+id/linearLayout"
-        app:layout_constraintStart_toStartOf="@+id/linearLayout"
-        app:layout_constraintTop_toTopOf="@+id/linearLayout"
+        android:layout_marginEnd="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@+id/linearLayout"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout"
+        app:layout_constraintVertical_bias="0.5"
         app:srcCompat="@drawable/ic_fb_love" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

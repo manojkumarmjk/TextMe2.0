@@ -32,6 +32,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import java.io.File;
 import java.text.DateFormatSymbols;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -265,4 +266,46 @@ public class HelperFunctions {
         handler.post(progressRunnable);
 
     }
+
+
+    public static String getFormattedDate(long timestamp) {
+        // Current date
+        Calendar currentCalendar = Calendar.getInstance();
+
+        // Date from timestamp
+        Calendar targetCalendar = Calendar.getInstance();
+        targetCalendar.setTimeInMillis(timestamp);
+
+        // Date format for longer than a week
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+
+        // Calculate the difference in days
+        long diff = currentCalendar.getTimeInMillis() - targetCalendar.getTimeInMillis();
+        long diffDays = diff / (24 * 60 * 60 * 1000);
+
+        if (diffDays > 7) {
+            // Longer than a week
+            return dateFormat.format(new Date(timestamp));
+        } else if (diffDays > 1) {
+            // Greater than yesterday and less than or equal to a week
+            SimpleDateFormat dayFormat = new SimpleDateFormat("EEEE", Locale.getDefault());
+            return dayFormat.format(new Date(timestamp));
+        } else if (diffDays == 1) {
+            // Yesterday
+            return "Yesterday";
+        } else {
+            // Today
+            return "Today";
+        }
+    }
+
+    public static boolean isSameDay(long date1, long date2) {
+        Calendar cal1 = Calendar.getInstance();
+        Calendar cal2 = Calendar.getInstance();
+        cal1.setTimeInMillis(date1);
+        cal2.setTimeInMillis(date2);
+        return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+                cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR);
+    }
+
 }

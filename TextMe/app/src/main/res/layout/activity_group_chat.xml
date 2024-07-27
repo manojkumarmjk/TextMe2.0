@@ -33,7 +33,7 @@
                 android:layout_weight="1"
                 android:backgroundTint="#ffffff"
                 android:ems="10"
-                android:hint="Type a massage..."
+                android:hint="Type a message..."
                 android:inputType="textLongMessage|textAutoCorrect|textWebEditText|textMultiLine|number|textPersonName|textAutoComplete|textImeMultiLine|time"
                 android:padding="8dp"
                 android:textIsSelectable="true"

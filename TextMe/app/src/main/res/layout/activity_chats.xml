@@ -42,7 +42,7 @@
                 android:layout_weight="1"
                 android:backgroundTint="#ffffff"
                 android:ems="10"
-                android:hint="Type a massage..."
+                android:hint="Type a message..."
                 android:padding="8dp"
                 android:layout_marginTop="3dp"
                 android:layout_marginBottom="3dp"
@@ -56,7 +56,7 @@
                 android:layout_height="30dp"
                 android:layout_marginEnd="12dp"
                 app:srcCompat="@drawable/ic_attachment"
-                android:visibility="gone"
+                android:visibility="visible"
                 app:tint="#646363" />
 
             <ImageView
@@ -75,12 +75,14 @@
         android:id="@+id/recyclerview"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:paddingBottom="10dp"
         android:defaultFocusHighlightEnabled="true"
+        android:paddingBottom="10dp"
         app:layout_constraintBottom_toTopOf="@+id/cardView"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/toolbar3" />
+        app:layout_constraintTop_toBottomOf="@+id/toolbar3"
+        app:layout_constraintVertical_bias="0.0" />
 
     <ImageView
         android:id="@+id/send_btn"

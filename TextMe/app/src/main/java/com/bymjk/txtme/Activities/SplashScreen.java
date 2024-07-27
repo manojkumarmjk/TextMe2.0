@@ -19,6 +19,8 @@ import com.bymjk.txtme.BuildConfig;
 import com.bymjk.txtme.Components.FirebaseClientImplementation;
 import com.bymjk.txtme.Components.HelperFunctions;
 import com.bymjk.txtme.Components.UpdateDialog;
+import com.bymjk.txtme.DB.FirebaseToRoomSync;
+import com.bymjk.txtme.Models.User;
 import com.bymjk.txtme.R;
 import com.bymjk.txtme.TextMeApplication;
 import com.bymjk.txtme.databinding.ActivitySplashScreenBinding;
@@ -28,6 +30,10 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
+
+import org.parceler.Parcels;
+
+import java.util.ArrayList;
 
 public class SplashScreen extends AppCompatActivity {
 
@@ -88,10 +94,11 @@ public class SplashScreen extends AppCompatActivity {
                 @Override
                 public void run() {
                     Intent intent = new Intent(SplashScreen.this, MainActivity.class);
+                    intent.putExtra("users", Parcels.wrap(getAllUsers()));
                     startActivity(intent);
                     finish();
                 }
-            }, 3000);
+            }, 2000);
         } else {
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -100,9 +107,25 @@ public class SplashScreen extends AppCompatActivity {
                     startActivity(intent);
                     finish();
                 }
-            }, 3000);
+            }, 2000);
 
         }
+    }
+
+    private ArrayList<User> getAllUsers(){
+
+        ArrayList<User> users = new ArrayList<>();
+        String myUid = FirebaseAuth.getInstance().getUid();
+        FirebaseToRoomSync sync  = new FirebaseToRoomSync(this, myUid);
+        if (!sync.getAllUsers(true).isEmpty()) {
+            users = new ArrayList<>(sync.getAllUsers(true));
+            return users;
+        } else if(!sync.getAllUsers(false).isEmpty()){
+            users = new ArrayList<>(sync.getAllUsers(false));
+            return users;
+        }
+
+        return users;
     }
 
 }

@@ -1,11 +1,22 @@
 package com.bymjk.txtme.Models;
 
-public class User {
+import androidx.annotation.NonNull;
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
+import org.parceler.Parcel;
 
-    private String uid, name, phoneNumber, profileImage, about,token;
+@Parcel
+@Entity(tableName = "users")
+public class User {
+    @PrimaryKey
+    @NonNull private String uid = "";
+    private String name;
+    private String phoneNumber;
+    private String profileImage;
+    private String about;
+    private String token;
 
     public User() {
-
     }
 
     public User(String uid, String name, String phoneNumber, String about, String profileImage) {
@@ -64,3 +75,5 @@ public class User {
         this.token = token;
     }
 }
+
+

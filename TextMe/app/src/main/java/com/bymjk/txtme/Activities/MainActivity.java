@@ -23,6 +23,7 @@ import com.bymjk.txtme.Adapters.TopStatusAdapter;
 import com.bymjk.txtme.Components.AppPreference;
 import com.bymjk.txtme.Components.HelperFunctions;
 import com.bymjk.txtme.Components.MyUsersList;
+import com.bymjk.txtme.DB.FirebaseToRoomSync;
 import com.bymjk.txtme.Models.AvailableUser;
 import com.bymjk.txtme.Models.UserStatus;
 import com.bymjk.txtme.R;
@@ -39,8 +40,14 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.messaging.FirebaseMessaging;
 
+import org.parceler.Parcels;
+
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -59,6 +66,10 @@ public class MainActivity extends AppCompatActivity {
     AvailableUser availableUser;
     ProgressDialog dialog;
 
+    boolean onresume = false;
+
+    private Map<User, Long> userLastMsgTimeMap = new HashMap<>();
+
     User user;
 
     ArrayList<String> contactsList;
@@ -68,16 +79,23 @@ public class MainActivity extends AppCompatActivity {
     String mName;
     String mUid;
     String add91, addNew91;
+    ArrayList<User> newUsers;
+    FirebaseToRoomSync sync;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+        super.onCreate(null);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         TextMeApplication.getInstance().setMainActivity(this);
+        Intent intent = getIntent();
 
         database = FirebaseDatabase.getInstance();
         auth = FirebaseAuth.getInstance();
+        users = new ArrayList<>();
+        userStatuses = new ArrayList<>();
+
+        users = Parcels.unwrap(intent.getParcelableExtra("users"));
 
         mAppPreferences = AppPreference.loadFromPreferences();
 
@@ -101,6 +119,12 @@ public class MainActivity extends AppCompatActivity {
 
         helperFunctions.storeUserInLocalDatabase();
 
+        if (FirebaseAuth.getInstance().getUid()!=null ) {
+            String myUid = FirebaseAuth.getInstance().getUid();
+            sync = new FirebaseToRoomSync(this, myUid);
+            sync.sync();
+        }
+
         binding.statusList.setVisibility(View.GONE);
         binding.view3.setVisibility(View.GONE);
         binding.bottomNavigationView.setSelectedItemId(R.id.chats);
@@ -110,14 +134,17 @@ public class MainActivity extends AppCompatActivity {
         contactsList = new ArrayList<>();
         newContactList = new ArrayList<>();
 
-        getContactList();
+//        getContactList();
+
+        getActualUser();
+
+
 
         dialog = new ProgressDialog(this);
         dialog.setMessage("Uploding Image...");
         dialog.setCancelable(false);
 
-        users = new ArrayList<>();
-        userStatuses = new ArrayList<>();
+
 
         String Users_uid = FirebaseAuth.getInstance().getUid();
         if (Users_uid != null) {
@@ -169,24 +196,28 @@ public class MainActivity extends AppCompatActivity {
 //            }
 //        });
 
-        ArrayList<User> newUsers = TextMeApplication.getInstance().getMainActivity().getAppPreferences().getUsersList();
-        if (newUsers.size()>0) {
-            usersAdapter = new UsersAdapter(this,newUsers);
-            binding.recyclerview.setAdapter(usersAdapter);
-            binding.recyclerview.showShimmerAdapter();
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    binding.recyclerview.hideShimmerAdapter();
-                }
-            },2500);
-            usersAdapter.notifyDataSetChanged();
-        }
-        else {
-            usersAdapter = new UsersAdapter(this,users);
-            binding.recyclerview.setAdapter(usersAdapter);
-            binding.recyclerview.showShimmerAdapter();
-        }
+//        ArrayList<User> newUsers = TextMeApplication.getInstance().getMainActivity().getAppPreferences().getUsersList();
+//        if (newUsers.size()>0) {
+//            usersAdapter = new UsersAdapter(this,newUsers);
+//            binding.recyclerview.setAdapter(usersAdapter);
+//            binding.recyclerview.showShimmerAdapter();
+//            new Handler().postDelayed(new Runnable() {
+//                @Override
+//                public void run() {
+//                    binding.recyclerview.hideShimmerAdapter();
+//                }
+//            },2500);
+//            usersAdapter.notifyDataSetChanged();
+//        }
+//        else {
+//            usersAdapter = new UsersAdapter(this,users);
+//            binding.recyclerview.setAdapter(usersAdapter);
+//            binding.recyclerview.showShimmerAdapter();
+//        }
+
+        newUsers = TextMeApplication.getInstance().getMainActivity().getAppPreferences().getUsersList();
+
+        fetchUsersAndTimestamps();
 
         String UserId = auth.getUid();
 
@@ -307,13 +338,82 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        getActualUser();
+//        getActualUser();
         Log.d("contact: ", String.valueOf(contactsList.size()));
 
     }
 
+    @SuppressLint({"CheckResult", "NotifyDataSetChanged"})
     private void getActualUser() {
 
+        if(users == null) {
+            if (!sync.getAllUsers(true).isEmpty()) {
+                users = new ArrayList<>(sync.getAllUsers(true));
+                binding.recyclerview.hideShimmerAdapter();
+                if (usersAdapter != null) {
+                    usersAdapter.notifyDataSetChanged();
+                }
+            } else if (!sync.getAllUsers(false).isEmpty()) {
+                ArrayList<User> userArrayList = new ArrayList<>();
+                FirebaseDatabase.getInstance().getReference().child("users").addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                        List<String> userIds = sync.getAllUserIDs();
+
+                        if (snapshot.exists()) {
+                            for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
+                                User user = dataSnapshot.getValue(User.class);
+
+                                for (String uid : userIds) {
+                                    if (user != null && user.getUid().equals(uid) && !user.getUid().equals(FirebaseAuth.getInstance().getUid()) ) {
+                                        userArrayList.add(user);
+                                    }
+                                }
+                            }
+
+                            users = new ArrayList<>(userArrayList);
+                            usersAdapter = new UsersAdapter(MainActivity.this, users);
+                            binding.recyclerview.setAdapter(usersAdapter);
+                            if (usersAdapter != null) {
+                                usersAdapter.notifyDataSetChanged();
+                            }
+
+                            TextMeApplication.getInstance().getMainActivity().getAppPreferences().setUsersList(userArrayList);
+
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+
+                    }
+                });
+            } else {
+                sync.usersSubject.subscribe(myUsers -> {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            users = myUsers;
+                            usersAdapter = new UsersAdapter(MainActivity.this, users);
+                            binding.recyclerview.setAdapter(usersAdapter);
+                            if (usersAdapter != null) {
+                                usersAdapter.notifyDataSetChanged();
+                            }
+                        }
+                    });
+                });
+            }
+        } else {
+            usersAdapter = new UsersAdapter(this, users);
+            binding.recyclerview.setAdapter(usersAdapter);
+            binding.recyclerview.hideShimmerAdapter();
+            if (usersAdapter != null) {
+                usersAdapter.notifyDataSetChanged();
+            }
+        }
+
+        /*
         database.getReference().child("users").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -333,7 +433,9 @@ public class MainActivity extends AppCompatActivity {
                     myUsersList.setList(users);
                     TextMeApplication.getInstance().getMainActivity().getAppPreferences().setUsersList(users);
                     binding.recyclerview.hideShimmerAdapter();
-                    usersAdapter.notifyDataSetChanged();
+                    if(usersAdapter!=null) {
+                        usersAdapter.notifyDataSetChanged();
+                    }
                 }
             }
             @Override
@@ -342,6 +444,77 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+         */
+
+    }
+
+    private void fetchUsersAndTimestamps() {
+        if (users != null && !users.isEmpty()) {
+            fetchLastMsgTimestamps(users);
+        }
+    }
+
+    private void fetchLastMsgTimestamps(ArrayList<User> userList) {
+        for (User user : userList) {
+            String senderId = FirebaseAuth.getInstance().getUid();
+            String senderRoom = senderId + user.getUid();
+
+            FirebaseDatabase.getInstance().getReference()
+                    .child("chats")
+                    .child(senderRoom)
+                    .addValueEventListener(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            long timeStamp = 0;
+                            if (snapshot.exists() && snapshot.child("lastMsgTime").getValue(Long.class) != null) {
+                                timeStamp = snapshot.child("lastMsgTime").getValue(Long.class);
+                            }
+
+                            if (onresume){
+                                userLastMsgTimeMap.remove(user);
+                                userLastMsgTimeMap.put(user, timeStamp);
+                            }else {
+                                userLastMsgTimeMap.put(user, timeStamp);
+                            }
+
+                            if (userLastMsgTimeMap.size() == (!newUsers.isEmpty() ? newUsers.size() : users.size())) {
+                                sortUsersByTimestamp();
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            Log.e("FirebaseError", "Error fetching timestamp: " + error.getMessage());
+                        }
+                    });
+        }
+    }
+
+    private void sortUsersByTimestamp() {
+        List<Map.Entry<User, Long>> sortedEntries = new ArrayList<>(userLastMsgTimeMap.entrySet());
+
+        Collections.sort(sortedEntries, new Comparator<Map.Entry<User, Long>>() {
+            @Override
+            public int compare(Map.Entry<User, Long> entry1, Map.Entry<User, Long> entry2) {
+                return Long.compare(entry2.getValue(), entry1.getValue());
+            }
+        });
+
+        ArrayList<User> sortedUsers = new ArrayList<>();
+        for (Map.Entry<User, Long> entry : sortedEntries) {
+            sortedUsers.add(entry.getKey());
+        }
+
+        // Update the adapter with the sorted user list
+        usersAdapter = new UsersAdapter(this, sortedUsers);
+        binding.recyclerview.setAdapter(usersAdapter);
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                usersAdapter.notifyDataSetChanged();
+                onresume = true;
+            }
+        }, 100);
     }
 
     public SharedPreferences getSharedPreferences() {
@@ -409,6 +582,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+
+//        ArrayList<User> newUsers = TextMeApplication.getInstance().getMainActivity().getAppPreferences().getUsersList();
+//        fetchLastMsgTimestamps(newUsers);
 
         String currentId = FirebaseAuth.getInstance().getUid();
         if (currentId != null) {

@@ -12,8 +12,7 @@ import android.os.Bundle;
 import android.view.View;
 
 import com.bymjk.txtme.Adapters.GroupMassagesAdapter;
-import com.bymjk.txtme.Adapters.MassagesAdapter;
-import com.bymjk.txtme.Models.Massage;
+import com.bymjk.txtme.Models.Message;
 import com.bymjk.txtme.databinding.ActivityGroupChatBinding;
 import com.github.dhaval2404.imagepicker.ImagePicker;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -31,14 +30,13 @@ import com.google.firebase.storage.UploadTask;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 
 public class GroupChatActivity extends AppCompatActivity {
 
     ActivityGroupChatBinding binding;
 
     GroupMassagesAdapter adapter;
-    ArrayList<Massage> massages;
+    ArrayList<Message> messages;
 
     FirebaseDatabase database;
     FirebaseStorage storage;
@@ -66,9 +64,9 @@ public class GroupChatActivity extends AppCompatActivity {
         dialog.setMessage("Updating Image...");
         dialog.setCancelable(false);
 
-        massages = new ArrayList<>();
+        messages = new ArrayList<>();
 
-        adapter = new GroupMassagesAdapter(this,massages);
+        adapter = new GroupMassagesAdapter(this, messages);
         binding.recyclerview.setLayoutManager(new LinearLayoutManager(this));
         binding.recyclerview.setAdapter(adapter);
 
@@ -76,12 +74,15 @@ public class GroupChatActivity extends AppCompatActivity {
                 .addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        massages.clear();
+                        messages.clear();
                         for (DataSnapshot snapshot1:snapshot.getChildren()){
-                            Massage massage = snapshot1.getValue(Massage.class);
-                            // String getkey = snapshot1.getKey();
-                            //massage.getMassageId(getkey);
-                            massages.add(massage);
+                            if (snapshot1 != null) {
+                                Message message = snapshot1.getValue(Message.class);
+                                if (message != null) {
+                                    message.setMassageId(snapshot1.getKey());
+                                    messages.add(message);
+                                }
+                            }
                         }
                         adapter.notifyDataSetChanged();
                     }
@@ -98,13 +99,13 @@ public class GroupChatActivity extends AppCompatActivity {
 
                 if ( !massageTxt.equals("")) {
                 Date date = new Date();
-                Massage massage = new Massage(massageTxt,senderUid,date.getTime());
+                Message message = new Message(massageTxt,senderUid,date.getTime(),1, Message.MessageType.TEXT.getValue());
                 binding.massagebox.setText("");
 
 
                     database.getReference().child("public")
                             .push()
-                            .setValue(massage);
+                            .setValue(message);
                 }
             }
         });
@@ -121,7 +122,7 @@ public class GroupChatActivity extends AppCompatActivity {
         });
 
 
-        /*adapter =  new MassagesAdapter(this,massages,senderRoom,receiverRoom);
+        /*adapter =  new MassagesAdapter(this,messages,senderRoom,receiverRoom);
         binding.recyclerview.setLayoutManager(new LinearLayoutManager(this));
         binding.recyclerview.setAdapter(adapter);*/
 
@@ -152,15 +153,15 @@ public class GroupChatActivity extends AppCompatActivity {
                                     String massageTxt = binding.massagebox.getText().toString();
 
                                     Date date = new Date();
-                                    Massage massage = new Massage(massageTxt,senderUid,date.getTime());
-                                    massage.setMassage("photo");
-                                    massage.setImageUrl(filePath);
+                                    Message message = new Message(massageTxt,senderUid,date.getTime(),2, Message.MessageType.IMAGE.getValue());
+                                    message.setMassage("photo");
+                                    message.setImageUrl(filePath);
 
                                     binding.massagebox.setText("");
 
                                     database.getReference().child("public")
                                             .push()
-                                            .setValue(massage);
+                                            .setValue(message);
                                 }
                             });
 

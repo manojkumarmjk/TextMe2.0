@@ -14,7 +14,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="5dp"
-        android:layout_marginBottom="1dp"
+        android:layout_marginBottom="3dp"
         android:layout_marginStart="5dp"
         android:layout_marginEnd="5dp"
         android:paddingStart="3dp"
@@ -33,7 +33,7 @@
             android:layout_height="230dp"
             android:layout_margin="6dp"
             app:cardCornerRadius="5dp"
-            android:visibility="gone"
+            android:visibility="visible"
             app:cardElevation="0dp">
             <ImageView
                 android:id="@+id/Reciever_image"
@@ -58,7 +58,7 @@
             android:text="@string/chats"
             android:textColor="#0D507F"
             android:textSize="17sp"
-            android:visibility="visible" />
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/reciever_time"
@@ -67,7 +67,8 @@
             android:layout_gravity="end|bottom"
             android:layout_marginEnd="2dp"
             android:fontFamily="@font/poppins_medium"
-            android:layout_marginTop="-10dp"
+            android:layout_marginTop="1dp"
+            android:layout_marginBottom="3dp"
             android:paddingEnd="8dp"
             android:text="9:33 PM"
             android:textColor="#0D507F"

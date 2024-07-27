@@ -11,6 +11,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.bymjk.txtme.DB.FirebaseToRoomSync;
 import com.bymjk.txtme.Models.AvailableUser;
 import com.bymjk.txtme.Models.User;
 import com.bymjk.txtme.R;
@@ -28,6 +29,8 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.mukesh.OnOtpCompletionListener;
+
+import org.parceler.Parcels;
 
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
@@ -152,6 +155,7 @@ public class OTPActivity extends AppCompatActivity {
 //                                            AvailableUser availableUser = new AvailableUser(mName, phonenumber_ccode, );
                                                 if (snapshot.exists()) {
                                                     intent = new Intent(OTPActivity.this, MainActivity.class);
+                                                    intent.putExtra("users", Parcels.wrap(getAllUsers()));
                                                 } else {
                                                     intent = new Intent(OTPActivity.this, SetupProfileActivity.class);
                                                 }
@@ -177,4 +181,21 @@ public class OTPActivity extends AppCompatActivity {
     });
 
 }
+
+    private ArrayList<User> getAllUsers(){
+
+        ArrayList<User> users = new ArrayList<>();
+        String myUid = FirebaseAuth.getInstance().getUid();
+        FirebaseToRoomSync sync  = new FirebaseToRoomSync(this, myUid);
+        if (!sync.getAllUsers(true).isEmpty()) {
+            users = new ArrayList<>(sync.getAllUsers(true));
+            return users;
+        } else if(!sync.getAllUsers(false).isEmpty()){
+            users = new ArrayList<>(sync.getAllUsers(false));
+            return users;
+        }
+
+        return users;
+    }
+
 }

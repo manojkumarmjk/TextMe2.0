@@ -1,10 +1,12 @@
 package com.bymjk.txtme.Activities;
 
+import static com.bymjk.txtme.Components.HelperFunctions.isSameDay;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
+import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -17,8 +19,6 @@ import android.os.Handler;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.RequestQueue;
@@ -27,10 +27,11 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
-import com.bymjk.txtme.Adapters.GroupMassagesAdapter;
 import com.bymjk.txtme.Adapters.MassagesAdapter;
-import com.bymjk.txtme.Adapters.TopStatusAdapter;
-import com.bymjk.txtme.Models.Massage;
+import com.bymjk.txtme.DB.AppDatabase;
+import com.bymjk.txtme.DB.MessageDao;
+import com.bymjk.txtme.DB.UserDao;
+import com.bymjk.txtme.Models.Message;
 import com.bymjk.txtme.Models.User;
 import com.bymjk.txtme.R;
 import com.bymjk.txtme.databinding.ActivityChatsBinding;
@@ -48,22 +49,23 @@ import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
 import org.json.JSONObject;
-import org.w3c.dom.Text;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TimeZone;
 
 public class ChatsActivity extends AppCompatActivity {
 
     ActivityChatsBinding binding;
     MassagesAdapter adapter;
-    ArrayList<Massage> massages;
+    ArrayList<Message> messages;
 
     String senderRoom ,receiverRoom;
 
@@ -83,19 +85,27 @@ public class ChatsActivity extends AppCompatActivity {
 
     String myname_notify;
 
+    AppDatabase db;
+    UserDao userDao;
+    MessageDao messageDao;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = ActivityChatsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        db = AppDatabase.getDatabase(this);
+        userDao = db.userDao();
+        messageDao = db.messageDao();
+
         database = FirebaseDatabase.getInstance();
         storage = FirebaseStorage.getInstance();
 
         setSupportActionBar(binding.toolbar3);
 
-        massages = new ArrayList<>();
-        adapter =  new MassagesAdapter(this,massages,senderRoom,receiverRoom);
+        messages = new ArrayList<>();
+        adapter =  new MassagesAdapter(ChatsActivity.this, messages,senderRoom,receiverRoom);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
         linearLayoutManager.setStackFromEnd(true);
         binding.recyclerview.setLayoutManager(linearLayoutManager);
@@ -108,8 +118,6 @@ public class ChatsActivity extends AppCompatActivity {
         name = getIntent().getStringExtra("name");
         profile = getIntent().getStringExtra("image");
         token = getIntent().getStringExtra("token");
-
-//        Toast.makeText(this, token, Toast.LENGTH_SHORT).show();
 
 
         binding.UserName.setText(name);
@@ -256,16 +264,64 @@ public class ChatsActivity extends AppCompatActivity {
                 .addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        massages.clear();
-                        for (DataSnapshot snapshot1:snapshot.getChildren()){
-                            Massage massage = snapshot1.getValue(Massage.class);
-                           // String getkey = snapshot1.getKey();
-                            //massage.getMassageId(getkey);
-                            massages.add(massage);
+
+                        List<Message> messageList = new ArrayList<>();
+                        messages.clear();
+                        Message previousMessage = null;
+
+                        // Store messages in a list
+                        for (DataSnapshot snapshot1 : snapshot.getChildren()) {
+                            if (snapshot1!= null ) {
+                                Message message = snapshot1.getValue(Message.class);
+                                if (message != null) {
+                                    message.setMassageId(snapshot1.getKey());
+//                                    messageDao.insert(message);
+                                    messageList.add(message);
+                                }
+                            }
+                        }
+
+                        // Sort the list by timestamp in ascending order
+                        Collections.sort(messageList, new Comparator<Message>() {
+                            @Override
+                            public int compare(Message m1, Message m2) {
+                                return Long.compare(m1.getTimestamp(), m2.getTimestamp());
+                            }
+                        });
+
+                        // Process the sorted messages
+                        for (Message message : messageList) {
+                            String messageId = message.getMassageId(); // Assuming `getKey()` returns the messageId
+
+                            if (previousMessage != null && !isSameDay(previousMessage.getTimestamp(), message.getTimestamp())) {
+                                Message dateSeparatorMessage = new Message("", "SYSTEM", message.getTimestamp(), 4, Message.MessageType.DATE_SEPARATOR.getValue());
+                                messages.add(dateSeparatorMessage);
+                            } else if (previousMessage == null) {
+                                Message dateSeparatorMessage = new Message("", "SYSTEM", message.getTimestamp(), 4, Message.MessageType.DATE_SEPARATOR.getValue());
+                                messages.add(dateSeparatorMessage);
+                            }
+
+                            messages.add(message);
+
+                            if (messageId != null && message.getMessageStatus() != 4 && FirebaseAuth.getInstance().getUid() != null && !FirebaseAuth.getInstance().getUid().equals(message.getSenderId())) {
+                                message.setMessageStatus(4);
+
+                                database.getReference().child("chats")
+                                        .child(receiverRoom)
+                                        .child("massages")
+                                        .child(messageId)
+                                        .setValue(message).addOnSuccessListener(new OnSuccessListener<Void>() {
+                                            @Override
+                                            public void onSuccess(Void unused) {
+                                            }
+                                        });
+                            }
+
+                            previousMessage = message;
                         }
                         adapter.notifyDataSetChanged();
-//                        if (massages.size() > 1) {
-//                            binding.recyclerview.smoothScrollToPosition(massages.size() - 1);
+//                        if (messages.size() > 1) {
+//                            binding.recyclerview.smoothScrollToPosition(messages.size() - 1);
 //                        }
                     }
                     @Override
@@ -299,17 +355,17 @@ public class ChatsActivity extends AppCompatActivity {
         binding.sendBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                String massageTxt = binding.massagebox.getText().toString();
+                String massageTxt = binding.massagebox.getText().toString().trim();
 
                 if (!massageTxt.equals("")) {
                     Date date = new Date();
-                    Massage massage = new Massage(massageTxt, senderUid, date.getTime());
+                    Message message = new Message(massageTxt, senderUid, date.getTime(), 2, Message.MessageType.TEXT.getValue());
                     binding.massagebox.setText("");
 
                     String randomKey = database.getReference().push().getKey();
 
                     HashMap<String, Object> lastMsgObj = new HashMap<>();
-                    lastMsgObj.put("lastMsg", massage.getMassage());
+                    lastMsgObj.put("lastMsg", message.getMassage());
                     lastMsgObj.put("lastMsgTime", date.getTime());
 
                     database.getReference().child("chats").child(senderRoom).updateChildren(lastMsgObj);
@@ -323,18 +379,30 @@ public class ChatsActivity extends AppCompatActivity {
                                 .child(senderRoom)
                                 .child("massages")
                                 .child(randomKey)
-                                .setValue(massage).addOnSuccessListener(new OnSuccessListener<Void>() {
+                                .setValue(message).addOnSuccessListener(new OnSuccessListener<Void>() {
                             @Override
                             public void onSuccess(Void unused) {
                                 database.getReference().child("chats")
                                         .child(receiverRoom)
                                         .child("massages")
                                         .child(randomKey)
-                                        .setValue(massage).addOnSuccessListener(new OnSuccessListener<Void>() {
+                                        .setValue(message).addOnSuccessListener(new OnSuccessListener<Void>() {
                                     @Override
                                     public void onSuccess(Void unused) {
 
-                                        sendNotification(myname_notify,massage.getMassage(),token);
+                                        message.setMessageStatus(3);
+
+                                        database.getReference().child("chats")
+                                                .child(receiverRoom)
+                                                .child("massages")
+                                                .child(randomKey)
+                                                .setValue(message).addOnSuccessListener(new OnSuccessListener<Void>() {
+                                                    @Override
+                                                    public void onSuccess(Void unused) {
+                                                    }
+                                                });
+
+                                        sendNotification(myname_notify, message.getMassage(),token);
                                     }
                                 });
 
@@ -487,16 +555,18 @@ public class ChatsActivity extends AppCompatActivity {
                                     String massageTxt = binding.massagebox.getText().toString();
 
                                     Date date = new Date();
-                                    Massage massage = new Massage(massageTxt,senderUid,date.getTime());
-                                    massage.setMassage("photo");
-                                    massage.setImageUrl(filePath);
+                                    Message message = new Message(massageTxt,senderUid,date.getTime(), 1, Message.MessageType.IMAGE.getValue());
+                                    message.setMassage("\uD83D\uDCF7 Photo");
+                                    message.setImageUrl(filePath);
+
+                                    message.setMessageStatus(2);
 
                                     binding.massagebox.setText("");
 
                                     String randomKey = database.getReference().push().getKey();
 
                                     HashMap<String,Object> lastMsgObj = new HashMap<>();
-                                    lastMsgObj.put("lastMsg",massage.getMassage());
+                                    lastMsgObj.put("lastMsg", message.getMassage());
                                     lastMsgObj.put("lastMsgTime",date.getTime());
 
                                     database.getReference().child("chats").child(senderRoom).updateChildren(lastMsgObj);
@@ -507,20 +577,24 @@ public class ChatsActivity extends AppCompatActivity {
                                                 .child(senderRoom)
                                                 .child("massages")
                                                 .child(randomKey)
-                                                .setValue(massage).addOnSuccessListener(new OnSuccessListener<Void>() {
+                                                .setValue(message).addOnSuccessListener(new OnSuccessListener<Void>() {
                                             @Override
                                             public void onSuccess(Void unused) {
+
+                                                message.setMessageStatus(3);
 
                                                 database.getReference().child("chats")
                                                         .child(receiverRoom)
                                                         .child("massages")
                                                         .child(randomKey)
-                                                        .setValue(massage).addOnSuccessListener(new OnSuccessListener<Void>() {
+                                                        .setValue(message).addOnSuccessListener(new OnSuccessListener<Void>() {
                                                     @Override
                                                     public void onSuccess(Void unused) {
 
                                                     }
                                                 });
+
+                                                sendNotification(myname_notify, message.getMassage(),token);
 
                                             }
                                         });
