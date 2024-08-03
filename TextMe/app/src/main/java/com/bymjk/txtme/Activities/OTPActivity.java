@@ -190,9 +190,6 @@ public class OTPActivity extends AppCompatActivity {
         if (!sync.getAllUsers(true).isEmpty()) {
             users = new ArrayList<>(sync.getAllUsers(true));
             return users;
-        } else if(!sync.getAllUsers(false).isEmpty()){
-            users = new ArrayList<>(sync.getAllUsers(false));
-            return users;
         }
 
         return users;

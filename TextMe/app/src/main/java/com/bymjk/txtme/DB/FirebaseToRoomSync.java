@@ -1,11 +1,13 @@
 package com.bymjk.txtme.DB;
 
 import com.bymjk.txtme.Components.MyUsersList;
+import com.bymjk.txtme.Models.ChatRoom;
 import com.bymjk.txtme.Models.Message;
 import com.bymjk.txtme.Models.RoomMessageMapping;
 import com.bymjk.txtme.Models.User;
 import com.bymjk.txtme.TextMeApplication;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -18,6 +20,7 @@ import android.content.Context;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,15 +33,17 @@ public class FirebaseToRoomSync {
     private AppDatabase db;
     private MessageDao messageDao;
     private UserDao userDao;
+    private ChatRoomDao chatRoomDao;
     private RoomMessageMappingDao roomMessageMappingDao;
     private String myUid;
     private ExecutorService executorService;
     public BehaviorSubject<ArrayList<User>> usersSubject = BehaviorSubject.create();
 
     public FirebaseToRoomSync(Context context, String myUid) {
-        db = Room.databaseBuilder(context, AppDatabase.class, "chat_database").build();
+        db = AppDatabase.getDatabase(context);
         userDao = db.userDao();
         messageDao = db.messageDao();
+        chatRoomDao = db.chatRoomDao();
         roomMessageMappingDao = db.roomMessageMappingDao();
         this.myUid = myUid;
         this.executorService = Executors.newSingleThreadExecutor();
@@ -86,8 +91,66 @@ public class FirebaseToRoomSync {
         });
     }
 
-    public void roomsAndMessagesSync(){
+//    public void roomsAndMessagesSync(){
+//        DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
+//        chatsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(DataSnapshot dataSnapshot) {
+//                executorService.execute(() -> {
+//                    for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
+//                        String roomId = chatSnapshot.getKey();
+//                        if (roomId != null && roomId.startsWith(myUid)) {
+//                            for (DataSnapshot messageSnapshot : chatSnapshot.child("massages").getChildren()) {
+//
+//                                Message message = messageSnapshot.getValue(Message.class);
+//
+//                                String messageId = messageSnapshot.getKey();
+//                                String imageUrl = messageSnapshot.child("imageUrl").getValue(String.class);
+//                                int feeling = messageSnapshot != null && messageSnapshot.child("feeling") != null ? messageSnapshot.child("feeling").getValue(Integer.class) != null ? messageSnapshot.child("feeling").getValue(Integer.class) : -1 : -1;
+//
+//                                try {
+//
+//                                    if (message != null && messageDao.getMessageById(messageId) == null) {
+//                                        message.setMassageId(messageId);
+//                                        message.setImageUrl(imageUrl);
+//                                        message.setFeeling(feeling);
+//                                        if (messageDao.getMessageById(messageId) == null) {
+//                                            messageDao.insert(message);
+//                                        }
+//                                    }
+//
+//
+//                                    if (roomMessageMappingDao.getMapping(roomId, messageId) == null) {
+//                                        RoomMessageMapping roomMessageMapping = new RoomMessageMapping();
+//                                        roomMessageMapping.setRoomId(roomId);
+//                                        roomMessageMapping.setMessageId(messageId);
+//                                        if (roomMessageMappingDao.getMapping(roomId, messageId) == null) {
+//                                            roomMessageMappingDao.insert(roomMessageMapping);
+//                                        }
+//                                    }
+//                                }catch (Exception e){
+//                                    e.printStackTrace();
+//                                }
+//
+//                            }
+//                        }
+//                    }
+//                    allUsersSync();
+//                });
+//            }
+//
+//            @Override
+//            public void onCancelled(DatabaseError databaseError) {
+//                // Handle possible errors
+//            }
+//        });
+//    }
+
+
+    public void roomsAndMessagesSync() {
         DatabaseReference chatsRef = FirebaseDatabase.getInstance().getReference("chats");
+
+        // Listener for single value event (initial sync)
         chatsRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -95,33 +158,7 @@ public class FirebaseToRoomSync {
                     for (DataSnapshot chatSnapshot : dataSnapshot.getChildren()) {
                         String roomId = chatSnapshot.getKey();
                         if (roomId != null && roomId.startsWith(myUid)) {
-                            for (DataSnapshot messageSnapshot : chatSnapshot.child("massages").getChildren()) {
-
-                                Message message = messageSnapshot.getValue(Message.class);
-
-                                String messageId = messageSnapshot.getKey();
-                                String imageUrl = messageSnapshot.child("imageUrl").getValue(String.class);
-                                int feeling = messageSnapshot != null && messageSnapshot.child("feeling") != null ? messageSnapshot.child("feeling").getValue(Integer.class) != null ? messageSnapshot.child("feeling").getValue(Integer.class) : -1 : -1;
-
-                                if (message != null && messageDao.getMessageById(messageId) == null) {
-                                    message.setMassageId(messageId);
-                                    message.setImageUrl(imageUrl);
-                                    message.setFeeling(feeling);
-                                    if (messageDao.getMessageById(messageId) == null) {
-                                        messageDao.insert(message);
-                                    }
-                                }
-
-
-                                if (roomMessageMappingDao.getMapping(roomId, messageId) == null) {
-                                    RoomMessageMapping roomMessageMapping = new RoomMessageMapping();
-                                    roomMessageMapping.setRoomId(roomId);
-                                    roomMessageMapping.setMessageId(messageId);
-                                    if (roomMessageMappingDao.getMapping(roomId, messageId) == null) {
-                                        roomMessageMappingDao.insert(roomMessageMapping);
-                                    }
-                                }
-                            }
+                            syncMessages(roomId, chatSnapshot);
                         }
                     }
                     allUsersSync();
@@ -133,7 +170,130 @@ public class FirebaseToRoomSync {
                 // Handle possible errors
             }
         });
+
+        // Listener for real-time updates
+        chatsRef.addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
+                String roomId = dataSnapshot.getKey();
+                if (roomId != null && roomId.startsWith(myUid)) {
+                    executorService.execute(() -> syncMessages(roomId, dataSnapshot));
+                }
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String previousChildName) {
+                String roomId = dataSnapshot.getKey();
+                if (roomId != null && roomId.startsWith(myUid)) {
+                    executorService.execute(() -> syncMessages(roomId, dataSnapshot));
+                }
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+                String roomId = dataSnapshot.getKey();
+                if (roomId != null && roomId.startsWith(myUid)) {
+                    executorService.execute(() -> deleteMessages(roomId, dataSnapshot));
+                }
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String previousChildName) {
+                // No action required for moved items
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                // Handle possible errors
+            }
+        });
     }
+
+    private void syncMessages(String roomId, DataSnapshot chatSnapshot) {
+        for (DataSnapshot messageSnapshot : chatSnapshot.child("massages").getChildren()) {
+            Message message = messageSnapshot.getValue(Message.class);
+            String messageId = messageSnapshot.getKey();
+            String imageUrl = messageSnapshot.child("imageUrl").getValue(String.class);
+            int feeling = messageSnapshot != null && messageSnapshot.child("feeling") != null ? messageSnapshot.child("feeling").getValue(Integer.class) != null ? messageSnapshot.child("feeling").getValue(Integer.class) : -1 : -1;
+
+            try {
+
+                if (message != null) {
+                    message.setMassageId(messageId);
+                    message.setImageUrl(imageUrl);
+                    message.setFeeling(feeling);
+
+                    // Insert or update the message
+                    if (messageDao.getMessageById(messageId) == null) {
+                        messageDao.insert(message);
+                    } else {
+                        messageDao.update(message);
+                    }
+
+                    // Insert mapping if not exists
+                    if (roomMessageMappingDao.getMapping(roomId, messageId) == null) {
+                        RoomMessageMapping roomMessageMapping = new RoomMessageMapping();
+                        roomMessageMapping.setRoomId(roomId);
+                        roomMessageMapping.setMessageId(messageId);
+                        roomMessageMappingDao.insert(roomMessageMapping);
+                    }
+                }
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+        // Update ChatRoom table
+        ChatRoom chatRoom = new ChatRoom();
+        chatRoom.setRoomId(roomId);
+        chatRoom.setLastMsg(chatSnapshot.child("lastMsg").getValue(String.class));
+        chatRoom.setLastMsgTime(chatSnapshot.child("lastMsgTime").getValue(Long.class));
+        chatRoom.setSenderId(chatSnapshot.child("senderId").getValue(String.class) != null
+                ? chatSnapshot.child("senderId").getValue(String.class)
+                : "");
+        chatRoomDao.insert(chatRoom);
+    }
+
+    private void deleteMessages(String roomId, DataSnapshot chatSnapshot) {
+        for (DataSnapshot messageSnapshot : chatSnapshot.child("massages").getChildren()) {
+            String messageId = messageSnapshot.getKey();
+            if (messageId != null) {
+                messageDao.deleteByMessageId(messageId);
+                roomMessageMappingDao.deleteByRoomIdAndMessageId(roomId, messageId);
+                chatRoomDao.deleteByRoomId(roomId);
+            }
+        }
+    }
+
+
+
+//    private void syncAdd(DataSnapshot dataSnapshot) {
+//        executorService.execute(() -> {
+//            Message message = dataSnapshot.getValue(Message.class);
+//            if (message != null) {
+//                message.setMassageId(dataSnapshot.getKey());
+//                messageDao.insert(message);
+//            }
+//        });
+//    }
+//
+//    private void syncUpdate(DataSnapshot dataSnapshot) {
+//        executorService.execute(() -> {
+//            Message message = dataSnapshot.getValue(Message.class);
+//            if (message != null) {
+//                message.setMassageId(dataSnapshot.getKey());
+//                messageDao.update(message);
+//            }
+//        });
+//    }
+//
+//    private void syncDelete(DataSnapshot dataSnapshot) {
+//        executorService.execute(() -> {
+//            String messageId = dataSnapshot.getKey();
+//            if (messageId != null) {
+//                messageDao.deleteByMessageId(messageId);
+//            }
+//        });
+//    }
 
     private List<String> getAllRoomIds() throws Exception {
         ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -155,19 +315,18 @@ public class FirebaseToRoomSync {
                 } catch (IllegalArgumentException e) {
                     Log.e("RoomId", "Invalid Room ID: " + roomId, e);
                 }
-                try {
-                    String friendUidBack = extractFriendUidBack(roomId, myUid);
-                    Log.d("RoomId", "Room ID: " + roomId);
-                    Log.d("UserUid", "User UID: " + myUid);
-                    Log.d("FriendUidBack", "Friend UID: " + friendUidBack);
-                    userID.add(friendUidBack);
-                } catch (IllegalArgumentException e) {
-                    Log.e("RoomId", "Invalid Room ID: " + roomId, e);
-                }
-
-                return new ArrayList<>(userID);
+//                try {
+//                    String friendUidBack = extractFriendUidBack(roomId, myUid);
+//                    Log.d("RoomId", "Room ID: " + roomId);
+//                    Log.d("UserUid", "User UID: " + myUid);
+//                    Log.d("FriendUidBack", "Friend UID: " + friendUidBack);
+//                    userID.add(friendUidBack);
+//                } catch (IllegalArgumentException e) {
+//                    Log.e("RoomId", "Invalid Room ID: " + roomId, e);
+//                }
 
             }
+            return new ArrayList<>(new HashSet<>(userID));
         } catch (Exception e) {
             e.printStackTrace();
         }

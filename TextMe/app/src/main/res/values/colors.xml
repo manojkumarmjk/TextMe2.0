@@ -10,4 +10,5 @@
     <color name="Gray">#EDEDED</color>
     <color name="Theme_color">#92E3A9</color>
     <color name="Heading_color">#DFF7E5</color>
+    <color name="chat_font_color">#0D507F</color>
 </resources>

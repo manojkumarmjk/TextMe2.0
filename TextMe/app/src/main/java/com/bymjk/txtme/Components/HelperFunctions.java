@@ -56,10 +56,6 @@ public class HelperFunctions {
     }
 
 
-//        firebaseClientImplementation.userDetails.subscribe(u ->{
-//
-//    });
-
     public static String getDateTime(long timeStamp, int condition) {
         // Convert the timeStamp to a Date object
         Date dateObj = new Date(timeStamp);

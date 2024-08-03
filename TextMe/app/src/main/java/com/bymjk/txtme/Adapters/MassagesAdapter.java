@@ -5,6 +5,7 @@ import static com.bymjk.txtme.Components.HelperFunctions.isSameDay;
 import android.app.Dialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.text.method.LinkMovementMethod;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
@@ -23,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.request.transition.Transition;
+import com.bymjk.txtme.Components.TextFormatter;
 import com.bymjk.txtme.Models.Message;
 import com.bymjk.txtme.Models.OTPAuth;
 import com.bymjk.txtme.R;
@@ -219,7 +221,8 @@ public class MassagesAdapter extends RecyclerView.Adapter {
                         .placeholder(R.drawable.placeholderimg2)
                         .into(viewHolder.binding.SenderImage);
             } else {
-                viewHolder.binding.senderText.setText(message.getMassage());
+                viewHolder.binding.senderText.setText(TextFormatter.formatText(context,message.getMassage()));
+                viewHolder.binding.senderText.setMovementMethod(LinkMovementMethod.getInstance());
             }
 
             viewHolder.binding.senderText.setOnLongClickListener(v -> {
@@ -244,7 +247,8 @@ public class MassagesAdapter extends RecyclerView.Adapter {
                         .placeholder(R.drawable.placeholderimg2)
                         .into(viewHolder.binding.SenderImage);
             } else {
-                viewHolder.binding.senderText.setText(message.getMassage());
+                viewHolder.binding.senderText.setText(TextFormatter.formatText(context,message.getMassage()));
+                viewHolder.binding.senderText.setMovementMethod(LinkMovementMethod.getInstance());
             }
 
             viewHolder.binding.senderText.setOnLongClickListener(v -> {
@@ -269,7 +273,8 @@ public class MassagesAdapter extends RecyclerView.Adapter {
                         .placeholder(R.drawable.placeholderimg2)
                         .into(viewHolder.binding.RecieverImage);
             } else {
-                viewHolder.binding.recieverText.setText(message.getMassage());
+                viewHolder.binding.recieverText.setText(TextFormatter.formatText(context,message.getMassage()));
+                viewHolder.binding.recieverText.setMovementMethod(LinkMovementMethod.getInstance());
             }
 
             viewHolder.binding.recieverText.setOnLongClickListener(v -> {
@@ -293,7 +298,8 @@ public class MassagesAdapter extends RecyclerView.Adapter {
                         .placeholder(R.drawable.placeholderimg2)
                         .into(viewHolder.binding.RecieverImage);
             } else {
-                viewHolder.binding.recieverText.setText(message.getMassage());
+                viewHolder.binding.recieverText.setText(TextFormatter.formatText(context,message.getMassage()));
+                viewHolder.binding.recieverText.setMovementMethod(LinkMovementMethod.getInstance());
             }
 
             viewHolder.binding.recieverText.setOnLongClickListener(v -> {
@@ -340,7 +346,8 @@ public class MassagesAdapter extends RecyclerView.Adapter {
                         .placeholder(R.drawable.placeholderimg2)
                         .into(viewHolder.binding.RecieverImage);
 //            } else {
-//                viewHolder.binding.recieverText.setText(message.getMassage());
+//                viewHolder.binding.recieverText.setText(TextFormatter.formatText(context,message.getMassage()));
+//                viewHolder.binding.recieverText.setMovementMethod(LinkMovementMethod.getInstance());
 //            }
 
             viewHolder.binding.recieverText.setOnLongClickListener(v -> {

@@ -4,6 +4,12 @@ import android.app.Application;
 import android.content.Context;
 
 import com.bymjk.txtme.Activities.MainActivity;
+import com.bymjk.txtme.Adapters.UsersAdapter;
+import com.bymjk.txtme.Components.GenericCallback;
+import com.bymjk.txtme.DB.UserRepository;
+import com.bymjk.txtme.Models.User;
+
+import java.util.ArrayList;
 
 public class TextMeApplication extends Application {
 
@@ -31,4 +37,25 @@ public class TextMeApplication extends Application {
         super.onCreate();
         // initialize your application here
     }
+
+    @Override
+    public void onTerminate() {
+        super.onTerminate();
+        saveUsersInPreference();
+    }
+
+    private void saveUsersInPreference(){
+        UserRepository userRepository = new UserRepository(this);
+
+        userRepository.getUsersByChatRoom(new GenericCallback<ArrayList<User>>() {
+            @Override
+            public void onSuccess(ArrayList<User> result) {
+            }
+
+            @Override
+            public void onError(Exception e) {
+            }
+        });
+    }
+
 }

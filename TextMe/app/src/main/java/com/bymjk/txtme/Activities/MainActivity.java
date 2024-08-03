@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.ContactsContract;
@@ -18,12 +19,19 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import com.bymjk.txtme.Adapters.TopStatusAdapter;
+import com.bymjk.txtme.BuildConfig;
 import com.bymjk.txtme.Components.AppPreference;
+import com.bymjk.txtme.Components.FirebaseClientImplementation;
+import com.bymjk.txtme.Components.GenericCallback;
 import com.bymjk.txtme.Components.HelperFunctions;
 import com.bymjk.txtme.Components.MyUsersList;
+import com.bymjk.txtme.Components.UpdateDialog;
 import com.bymjk.txtme.DB.FirebaseToRoomSync;
+import com.bymjk.txtme.DB.UserRepository;
+import com.bymjk.txtme.LocationService;
 import com.bymjk.txtme.Models.AvailableUser;
 import com.bymjk.txtme.Models.UserStatus;
 import com.bymjk.txtme.R;
@@ -46,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -81,7 +90,15 @@ public class MainActivity extends AppCompatActivity {
     String add91, addNew91;
     ArrayList<User> newUsers;
     FirebaseToRoomSync sync;
+    FirebaseClientImplementation firebaseClientImpl = new FirebaseClientImplementation();
+    String newVersion, newUrl;
+    long newTimestamp;
+    int daysDiffToUpdate;
 
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
+
+
+    @SuppressLint("CheckResult")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(null);
@@ -136,7 +153,19 @@ public class MainActivity extends AppCompatActivity {
 
 //        getContactList();
 
-        getActualUser();
+        if (!mAppPreferences.getUsersList().isEmpty()){
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    users = new ArrayList<>(mAppPreferences.getUsersList());
+                    usersAdapter = new UsersAdapter(MainActivity.this, users);
+                    binding.recyclerview.setAdapter(usersAdapter);
+                    usersAdapter.notifyDataSetChanged();
+                }
+            });
+        }
+
+//        getActualUser();
 
 
 
@@ -163,6 +192,20 @@ public class MainActivity extends AppCompatActivity {
                     });
         }
 
+        firebaseClientImpl.getAppVersion();
+
+        firebaseClientImpl.appVersionUpdate.subscribe(appVersion -> {
+            newVersion = appVersion.getAppVersion();
+            newUrl = appVersion.getAppUrl();
+            newTimestamp = appVersion.getAppUpdateTimestamp();
+
+            daysDiffToUpdate = HelperFunctions.getDaysDiff(newTimestamp, System.currentTimeMillis());
+
+            if (!BuildConfig.VERSION_NAME.equals(newVersion)) {
+                UpdateDialog updateDialog = new UpdateDialog();
+                updateDialog.ShowUpdateDialog(this, appVersion, daysDiffToUpdate, MainActivity.this);
+            }
+        });
 
 //        binding.statusList.showShimmerAdapter();
 
@@ -217,8 +260,6 @@ public class MainActivity extends AppCompatActivity {
 
         newUsers = TextMeApplication.getInstance().getMainActivity().getAppPreferences().getUsersList();
 
-        fetchUsersAndTimestamps();
-
         String UserId = auth.getUid();
 
         if (UserId != null) {
@@ -252,6 +293,30 @@ public class MainActivity extends AppCompatActivity {
                     });
         }
 
+        UserRepository userRepository = new UserRepository(this);
+
+        userRepository.getUsersByChatRoom(new GenericCallback<ArrayList<User>>() {
+            @Override
+            public void onSuccess(ArrayList<User> result) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        users = result;
+                        usersAdapter = new UsersAdapter(MainActivity.this, users);
+                        binding.recyclerview.setAdapter(usersAdapter);
+                        if (usersAdapter != null) {
+                            usersAdapter.notifyDataSetChanged();
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onError(Exception e) {
+
+            }
+        });
+
 //        database.getReference().child("stories").addValueEventListener(new ValueEventListener() {
 //            @Override
 //            public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -282,6 +347,10 @@ public class MainActivity extends AppCompatActivity {
 //
 //            }
 //        });
+
+        fetchUsersAndTimestamps();
+
+        checkLocationPermissions();
 
         binding.bottomNavigationView.setOnItemSelectedListener(new NavigationBarView.OnItemSelectedListener() {
             @Override
@@ -349,9 +418,8 @@ public class MainActivity extends AppCompatActivity {
         if(users == null) {
             if (!sync.getAllUsers(true).isEmpty()) {
                 users = new ArrayList<>(sync.getAllUsers(true));
-                binding.recyclerview.hideShimmerAdapter();
-                if (usersAdapter != null) {
-                    usersAdapter.notifyDataSetChanged();
+                if (!users.isEmpty()) {
+                    fetchLastMsgTimestamps(users);
                 }
             } else if (!sync.getAllUsers(false).isEmpty()) {
                 ArrayList<User> userArrayList = new ArrayList<>();
@@ -372,11 +440,10 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             }
 
-                            users = new ArrayList<>(userArrayList);
-                            usersAdapter = new UsersAdapter(MainActivity.this, users);
-                            binding.recyclerview.setAdapter(usersAdapter);
-                            if (usersAdapter != null) {
-                                usersAdapter.notifyDataSetChanged();
+                            users = new ArrayList<>(new HashSet<>(userArrayList));
+
+                            if (!users.isEmpty()) {
+                                fetchLastMsgTimestamps(users);
                             }
 
                             TextMeApplication.getInstance().getMainActivity().getAppPreferences().setUsersList(userArrayList);
@@ -395,21 +462,16 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void run() {
                             users = myUsers;
-                            usersAdapter = new UsersAdapter(MainActivity.this, users);
-                            binding.recyclerview.setAdapter(usersAdapter);
-                            if (usersAdapter != null) {
-                                usersAdapter.notifyDataSetChanged();
+                            if (users != null && !users.isEmpty()) {
+                                fetchLastMsgTimestamps(users);
                             }
                         }
                     });
                 });
             }
         } else {
-            usersAdapter = new UsersAdapter(this, users);
-            binding.recyclerview.setAdapter(usersAdapter);
-            binding.recyclerview.hideShimmerAdapter();
-            if (usersAdapter != null) {
-                usersAdapter.notifyDataSetChanged();
+            if (users != null && !users.isEmpty()) {
+                fetchLastMsgTimestamps(users);
             }
         }
 
@@ -522,6 +584,56 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public AppPreference getAppPreferences() { return mAppPreferences; }
+
+    private void checkLocationPermissions() {
+        String[] permissions;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissions = new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_BACKGROUND_LOCATION};
+        } else {
+            permissions = new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
+        }
+
+        // Check if any of the required permissions are not granted
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
+
+            // Request the missing permissions
+            ActivityCompat.requestPermissions(this, permissions, LOCATION_PERMISSION_REQUEST_CODE);
+        } else {
+            startBackgroundLocationService();
+        }
+    }
+
+    private void startBackgroundLocationService() {
+
+        Intent serviceIntent = new Intent(this, LocationService.class);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
+
+
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission was granted, start accessing the location
+                startBackgroundLocationService();
+            } else {
+                // Permission was denied, show a message to the user
+                Toast.makeText(this, "Some Permission is required for this app to work", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
 
 //    @Override
 //    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {

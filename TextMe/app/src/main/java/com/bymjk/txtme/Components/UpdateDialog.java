@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bymjk.txtme.Activities.MainActivity;
 import com.bymjk.txtme.Activities.SplashScreen;
 import com.bymjk.txtme.BuildConfig;
 import com.bymjk.txtme.Models.AppVersion;
@@ -128,8 +129,6 @@ public class UpdateDialog {
             public void onClick(View v) {
                 if (daysLeft > 0){
                     dialog.dismiss();
-                    SplashScreen splashScreen = (SplashScreen) activity;
-                    splashScreen.goToAnotherActivity();
                 }
                 else {
                     activity.finish();

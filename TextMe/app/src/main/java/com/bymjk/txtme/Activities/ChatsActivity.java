@@ -28,8 +28,11 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
 import com.bymjk.txtme.Adapters.MassagesAdapter;
+import com.bymjk.txtme.Components.GenericCallback;
+import com.bymjk.txtme.Components.KeyboardVisibilityUtils;
 import com.bymjk.txtme.DB.AppDatabase;
 import com.bymjk.txtme.DB.MessageDao;
+import com.bymjk.txtme.DB.MessageRepository;
 import com.bymjk.txtme.DB.UserDao;
 import com.bymjk.txtme.Models.Message;
 import com.bymjk.txtme.Models.User;
@@ -258,6 +261,75 @@ public class ChatsActivity extends AppCompatActivity {
         });
 
 
+        MessageRepository messageRepository = new MessageRepository(this);
+
+        messageRepository.getMessagesByRoomId(senderRoom, new GenericCallback<List<Message>>() {
+            @Override
+            public void onSuccess(List<Message> userMessages) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+
+
+                        List<Message> messageList = new ArrayList<>();
+                        messages.clear();
+                        Message previousMessage = null;
+                        for (Message message : userMessages) {
+                            if (message != null) {
+                                messageList.add(message);
+                            }
+                        }
+
+                        Collections.sort(messageList, new Comparator<Message>() {
+                            @Override
+                            public int compare(Message m1, Message m2) {
+                                return Long.compare(m1.getTimestamp(), m2.getTimestamp());
+                            }
+                        });
+
+                        // Process the sorted messages
+                        for (Message message : messageList) {
+                            String messageId = message.getMassageId(); // Assuming `getKey()` returns the messageId
+
+                            if (previousMessage != null && !isSameDay(previousMessage.getTimestamp(), message.getTimestamp())) {
+                                Message dateSeparatorMessage = new Message("", "SYSTEM", message.getTimestamp(), 4, Message.MessageType.DATE_SEPARATOR.getValue());
+                                messages.add(dateSeparatorMessage);
+                            } else if (previousMessage == null) {
+                                Message dateSeparatorMessage = new Message("", "SYSTEM", message.getTimestamp(), 4, Message.MessageType.DATE_SEPARATOR.getValue());
+                                messages.add(dateSeparatorMessage);
+                            }
+
+                            messages.add(message);
+
+                            if (messageId != null && message.getMessageStatus() != 4 && FirebaseAuth.getInstance().getUid() != null && !FirebaseAuth.getInstance().getUid().equals(message.getSenderId())) {
+                                message.setMessageStatus(4);
+
+                                database.getReference().child("chats")
+                                        .child(receiverRoom)
+                                        .child("massages")
+                                        .child(messageId)
+                                        .setValue(message).addOnSuccessListener(new OnSuccessListener<Void>() {
+                                            @Override
+                                            public void onSuccess(Void unused) {
+                                            }
+                                        });
+                            }
+
+                            previousMessage = message;
+                        }
+                        adapter.notifyDataSetChanged();
+                    }
+                });
+
+            }
+
+            @Override
+            public void onError(Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+
         database.getReference().child("chats")
                 .child(senderRoom)
                 .child("massages")
@@ -275,7 +347,6 @@ public class ChatsActivity extends AppCompatActivity {
                                 Message message = snapshot1.getValue(Message.class);
                                 if (message != null) {
                                     message.setMassageId(snapshot1.getKey());
-//                                    messageDao.insert(message);
                                     messageList.add(message);
                                 }
                             }
@@ -367,9 +438,12 @@ public class ChatsActivity extends AppCompatActivity {
                     HashMap<String, Object> lastMsgObj = new HashMap<>();
                     lastMsgObj.put("lastMsg", message.getMassage());
                     lastMsgObj.put("lastMsgTime", date.getTime());
+                    lastMsgObj.put("senderId",senderUid);
 
                     database.getReference().child("chats").child(senderRoom).updateChildren(lastMsgObj);
                     database.getReference().child("chats").child(receiverRoom).updateChildren(lastMsgObj);
+
+//                    binding.recyclerview.scrollToPosition(adapter.getItemCount() - 1);
 
                     scrollToBottom(binding.recyclerview);
 
@@ -509,21 +583,26 @@ public class ChatsActivity extends AppCompatActivity {
         final int lastItemPosition;
         if (adapter != null) {
             lastItemPosition = adapter.getItemCount() - 1;
-
-            if (layoutManager != null) {
-                layoutManager.scrollToPositionWithOffset(lastItemPosition, 0);
-                recyclerView.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        // then scroll to specific offset
-                        View target = layoutManager.findViewByPosition(lastItemPosition);
-                        if (target != null) {
-                            int offset = recyclerView.getMeasuredHeight() - target.getMeasuredHeight();
-                            layoutManager.scrollToPositionWithOffset(lastItemPosition, offset);
-                        }
-                    }
-                });
-            }
+//            if (layoutManager != null) {
+//                layoutManager.scrollToPositionWithOffset(lastItemPosition, -80);
+//                recyclerView.post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        // then scroll to specific offset
+//                        View target = layoutManager.findViewByPosition(lastItemPosition);
+//                        if (target != null) {
+//                            int offset = recyclerView.getMeasuredHeight() - target.getMeasuredHeight();
+//                            layoutManager.scrollToPositionWithOffset(lastItemPosition, offset);
+//                        }
+//                    }
+//                });
+//            }
+            KeyboardVisibilityUtils.setKeyboardVisibilityListener(this, isOpen -> {
+                if (isOpen) {
+                    // Scroll to the bottom when the keyboard is shown
+                    recyclerView.smoothScrollToPosition(adapter.getItemCount());
+                }
+            });
         }
 
 

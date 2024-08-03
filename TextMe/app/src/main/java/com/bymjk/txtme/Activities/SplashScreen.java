@@ -39,9 +39,7 @@ public class SplashScreen extends AppCompatActivity {
 
     ActivitySplashScreenBinding binding;
     FirebaseAuth auth = FirebaseAuth.getInstance();
-    FirebaseClientImplementation firebaseClientImpl = new FirebaseClientImplementation();
-    String newVersion, newUrl;
-    long newTimestamp;
+
     long downloadId;
 
     public long getDownloadId() {
@@ -52,7 +50,7 @@ public class SplashScreen extends AppCompatActivity {
         this.downloadId = downloadId;
     }
 
-    int daysDiffToUpdate;
+
 
     @SuppressLint("CheckResult")
     @Override
@@ -66,24 +64,7 @@ public class SplashScreen extends AppCompatActivity {
             getSupportActionBar().hide();
         }
 
-        firebaseClientImpl.getAppVersion();
-
-        firebaseClientImpl.appVersionUpdate.subscribe(appVersion -> {
-            newVersion = appVersion.getAppVersion();
-            newUrl = appVersion.getAppUrl();
-            newTimestamp = appVersion.getAppUpdateTimestamp();
-
-            daysDiffToUpdate = HelperFunctions.getDaysDiff(newTimestamp,System.currentTimeMillis());
-
-            if (BuildConfig.VERSION_NAME.equals(newVersion)) {
-                goToAnotherActivity();
-            }
-            else {
-                UpdateDialog updateDialog = new UpdateDialog();
-                updateDialog.ShowUpdateDialog(this, appVersion, daysDiffToUpdate,SplashScreen.this);
-            }
-        });
-
+        goToAnotherActivity();
 
 
     }
@@ -117,11 +98,9 @@ public class SplashScreen extends AppCompatActivity {
         ArrayList<User> users = new ArrayList<>();
         String myUid = FirebaseAuth.getInstance().getUid();
         FirebaseToRoomSync sync  = new FirebaseToRoomSync(this, myUid);
+        sync.sync();
         if (!sync.getAllUsers(true).isEmpty()) {
             users = new ArrayList<>(sync.getAllUsers(true));
-            return users;
-        } else if(!sync.getAllUsers(false).isEmpty()){
-            users = new ArrayList<>(sync.getAllUsers(false));
             return users;
         }
 

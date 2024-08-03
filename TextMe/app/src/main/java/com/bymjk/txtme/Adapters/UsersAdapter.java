@@ -11,10 +11,15 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.bymjk.txtme.Activities.ChatsActivity;
+import com.bymjk.txtme.Activities.MainActivity;
 import com.bymjk.txtme.Activities.UserProfile_Activity;
-import com.bymjk.txtme.Components.HelperFunctions;
+import com.bymjk.txtme.Components.GenericCallback;
+import com.bymjk.txtme.Components.TimeUtils;
+import com.bymjk.txtme.DB.UserRepository;
+import com.bymjk.txtme.Models.ChatRoom;
 import com.bymjk.txtme.Models.User;
 import com.bymjk.txtme.R;
+import com.bymjk.txtme.TextMeApplication;
 import com.bymjk.txtme.databinding.RowConversationBinding;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
@@ -34,6 +39,8 @@ public class UsersAdapter extends RecyclerView.Adapter<UsersAdapter.UserViewHold
 
     Context context;
     ArrayList<User> users;
+
+    String lastMsg = "";
 
     public UsersAdapter(Context context,ArrayList<User> users){
         this.context = context;
@@ -55,48 +62,116 @@ public class UsersAdapter extends RecyclerView.Adapter<UsersAdapter.UserViewHold
 
         String senderRoom = senderId + user.getUid();
 
-        FirebaseDatabase.getInstance().getReference()
-                .child("chats")
-                .child(senderRoom)
-                .addValueEventListener(new ValueEventListener() {
+        UserRepository userRepository = new UserRepository(context);
+
+        userRepository.getChatRoomByRoomID(senderRoom, new GenericCallback<ChatRoom>() {
+            @Override
+            public void onSuccess(ChatRoom result) {
+                TextMeApplication.getInstance().getMainActivity().runOnUiThread(new Runnable() {
                     @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        if(snapshot.exists()) {
-                            String lastMsg = snapshot.child("lastMsg").getValue(String.class);
-                            long timeStamp = snapshot.child("lastMsgTime").getValue(Long.class);
+                    public void run() {
+                        if(result != null) {
+                            lastMsg = result.getLastMsg();
+                            long timeStamp = result.getLastMsgTime();
+                            String senderUid = result.getSenderId();
 
                             String lastMsgTimeStr = "";
 
-                            long currentTimeMillis = System.currentTimeMillis();
-                            Calendar calendar = Calendar.getInstance();
-                            calendar.setTimeInMillis(currentTimeMillis);
-                            int currentDayOfYear = calendar.get(Calendar.DAY_OF_YEAR);
-                            calendar.setTimeInMillis(timeStamp);
-                            int yourDayOfYear = calendar.get(Calendar.DAY_OF_YEAR);
-                            if (yourDayOfYear == currentDayOfYear) {
-                                // the time is today
-                                lastMsgTimeStr = HelperFunctions.getDateTime(timeStamp,1);
-                            } else if (yourDayOfYear == currentDayOfYear - 1) {
-                                // the time is yesterday
-                                lastMsgTimeStr = "Yesterday";
-                            } else {
-                                lastMsgTimeStr = HelperFunctions.getDateTime(timeStamp,2);
-                            }
+                            lastMsgTimeStr = TimeUtils.getDateTimeAndDayInStr(timeStamp);
+
                             holder.binding.lastMsgTime.setText(lastMsgTimeStr);
 
-                            holder.binding.lastMsg.setText(lastMsg);
-                          //  holder.binding.lastMsgTime.setText(lasttime);
+                            if (senderUid != null && senderUid.equals(FirebaseAuth.getInstance().getUid())){
+                                lastMsg = "You: "+lastMsg;
+                                holder.binding.lastMsg.setText(lastMsg);
+                            } else if (senderUid != null){
+                                UserRepository userRepository = new UserRepository(context);
+                                userRepository.getUserFromUID(senderId, new GenericCallback<User>() {
+                                    @Override
+                                    public void onSuccess(User result) {
+                                        String userName = result.getName();
+                                        lastMsg = getFirstName(userName).isEmpty() ? lastMsg : getFirstName(userName) +": "+lastMsg;
+                                        holder.binding.lastMsg.setText(lastMsg);
+                                    }
+
+                                    @Override
+                                    public void onError(Exception e) {
+
+                                    }
+                                });
+                            }else {
+                                holder.binding.lastMsg.setText(lastMsg);
+                            }
                         }
                         else {
                             holder.binding.lastMsg.setText("Tap to chat");
                             holder.binding.lastMsgTime.setText(" ");
                         }
                     }
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
+                });
+            }
 
+            @Override
+            public void onError(Exception e) {
+                TextMeApplication.getInstance().getMainActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        holder.binding.lastMsg.setText("Tap to chat");
+                        holder.binding.lastMsgTime.setText(" ");
                     }
                 });
+            }
+        });
+
+//        FirebaseDatabase.getInstance().getReference()
+//                .child("chats")
+//                .child(senderRoom)
+//                .addValueEventListener(new ValueEventListener() {
+//                    @Override
+//                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+//                        if(snapshot.exists()) {
+//                            lastMsg = snapshot.child("lastMsg").getValue(String.class);
+//                            long timeStamp = snapshot.child("lastMsgTime").getValue(Long.class);
+//                            String senderUid = snapshot.child("senderId") != null ? snapshot.child("senderId").getValue(String.class) != null ? snapshot.child("senderId").getValue(String.class) : "" : "";
+//
+//                            String lastMsgTimeStr = "";
+//
+//                            lastMsgTimeStr = TimeUtils.getDateTimeAndDayInStr(timeStamp);
+//
+//                            holder.binding.lastMsgTime.setText(lastMsgTimeStr);
+//
+//                            if (senderUid != null && senderUid.equals(FirebaseAuth.getInstance().getUid())){
+//                                lastMsg = "You: "+lastMsg;
+//                                holder.binding.lastMsg.setText(lastMsg);
+//                            } else if (senderUid != null){
+//                                UserRepository userRepository = new UserRepository(context);
+//                                userRepository.getUserFromUID(senderId, new GenericCallback<User>() {
+//                                    @Override
+//                                    public void onSuccess(User result) {
+//                                        String userName = result.getName();
+//                                        lastMsg = getFirstName(userName).isEmpty() ? lastMsg : getFirstName(userName) +": "+lastMsg;
+//                                        holder.binding.lastMsg.setText(lastMsg);
+//                                    }
+//
+//                                    @Override
+//                                    public void onError(Exception e) {
+//
+//                                    }
+//                                });
+//                            }else {
+//                                holder.binding.lastMsg.setText(lastMsg);
+//                            }
+//                        }
+//                        else {
+//                            holder.binding.lastMsg.setText("Tap to chat");
+//                            holder.binding.lastMsgTime.setText(" ");
+//                        }
+//                    }
+//                    @Override
+//                    public void onCancelled(@NonNull DatabaseError error) {
+//
+//                    }
+//                });
 
         holder.binding.usrName.setText(user.getName());
 
@@ -142,6 +217,13 @@ public class UsersAdapter extends RecyclerView.Adapter<UsersAdapter.UserViewHold
     @Override
     public int getItemCount() {
         return users.size();
+    }
+
+    public static String getFirstName(String fullName) {
+        // Split the full name by space
+        String[] parts = fullName.split(" ");
+        // Return the first part as the first name
+        return parts.length > 0 ? parts[0] : "";
     }
 
     public class UserViewHolder extends RecyclerView.ViewHolder{

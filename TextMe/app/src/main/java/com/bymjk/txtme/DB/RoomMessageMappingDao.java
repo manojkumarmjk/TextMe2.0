@@ -22,5 +22,7 @@ public interface RoomMessageMappingDao {
     @Query("SELECT DISTINCT roomId FROM room_message_mapping")
     List<String> getAllRoomIds();
 
+    @Query("DELETE FROM room_message_mapping WHERE roomId = :roomId AND messageId = :messageId")
+    void deleteByRoomIdAndMessageId(String roomId, String messageId);
 }
 
