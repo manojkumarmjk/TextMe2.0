@@ -24,7 +24,7 @@ import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
 
-import com.bymjk.txtme.Activities.SplashScreen;
+import com.bymjk.txtme.Activities.MainActivity;
 import com.bymjk.txtme.R;
 import com.bymjk.txtme.TextMeApplication;
 import com.google.firebase.auth.FirebaseAuth;
@@ -109,7 +109,7 @@ public class HelperFunctions {
 
     private long downloadId;
     private String appNewVersion = "";
-    private SplashScreen splashScreen;
+    private MainActivity mainActivity;
     Runnable progressRunnable;
     final Handler handler = new Handler();
     final int delay = 1000;
@@ -118,13 +118,13 @@ public class HelperFunctions {
 
     public void downloadFile(String url, Context context, String newVersion, Activity activity) {
         appNewVersion = newVersion;
-        this.splashScreen = (SplashScreen) activity;
+        this.mainActivity = (MainActivity) activity;
 
         File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         // Create a new file in the Downloads directory with the desired filename
         File file = new File(downloadsDir, "TextMe " + newVersion + ".apk");
 
-        splashScreen.runOnUiThread(new Runnable() {
+        mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 dialogDownloadInProgress = new Dialog(context);
@@ -179,7 +179,7 @@ public class HelperFunctions {
                     if (status == DownloadManager.STATUS_SUCCESSFUL) {
                         if(counter == 0) {
                             counter++;
-                            splashScreen.runOnUiThread(new Runnable() {
+                            mainActivity.runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
                                     handler.removeCallbacks(progressRunnable);
@@ -218,7 +218,7 @@ public class HelperFunctions {
                         }
                         // Download completed
                     } else if (status == DownloadManager.STATUS_FAILED) {
-                        splashScreen.runOnUiThread(new Runnable() {
+                        mainActivity.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 handler.removeCallbacks(progressRunnable);
@@ -243,7 +243,7 @@ public class HelperFunctions {
                         @SuppressLint("Range") int bytesTotal = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES) <= -1 ? 0 : cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
                         int progress = (int) ((bytesDownloaded * 100L) / bytesTotal);
                         // Use 'progress' to update your UI
-                        splashScreen.runOnUiThread(new Runnable() {
+                        mainActivity.runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 dialogDownloadProgressBar.setProgress(progress);

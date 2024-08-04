@@ -106,7 +106,7 @@ public class LocationService extends Service {
                 .setSmallIcon(R.drawable.googleg_standard_color_18)
                 .setContentIntent(pendingIntent);
 
-        startForeground(1, notificationBuilder.build());
+        startForeground(182, notificationBuilder.build());
     }
 
     private void startLocationUpdates() {

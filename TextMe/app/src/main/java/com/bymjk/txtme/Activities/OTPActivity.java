@@ -109,13 +109,14 @@ public class OTPActivity extends AppCompatActivity {
         binding.otpView.setOtpCompletionListener(new OnOtpCompletionListener() {
             @Override
             public void onOtpCompleted(String otp) {
-                PhoneAuthCredential credential = PhoneAuthProvider.getCredential(verificationId, otp);
-                Log.d("code", "onCodeSent - otp:" + otp);
-                Log.d("code", "onCodeSent - verification id:" + verificationId);
-                auth.signInWithCredential(credential).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
+                try {
+                    PhoneAuthCredential credential = PhoneAuthProvider.getCredential(verificationId, otp);
+                    Log.d("code", "onCodeSent - otp:" + otp);
+                    Log.d("code", "onCodeSent - verification id:" + verificationId);
+                    auth.signInWithCredential(credential).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<AuthResult> task) {
+                            if (task.isSuccessful()) {
 
 //                            database.getReference().child("availableUser").child(phonenumber_ccode)
 //                                    .addValueEventListener(new ValueEventListener() {
@@ -135,13 +136,13 @@ public class OTPActivity extends AppCompatActivity {
 //                                        }
 //                                    });
 //                        }
-                            String uid = auth.getUid();
-                            if (uid != null) {
-                                database.getReference().child("availableUser").child(phonenumber_ccode)
-                                        .addListenerForSingleValueEvent(new ValueEventListener() {
-                                            @Override
-                                            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                                // Result will be holded Here
+                                String uid = auth.getUid();
+                                if (uid != null) {
+                                    database.getReference().child("availableUser").child(phonenumber_ccode)
+                                            .addListenerForSingleValueEvent(new ValueEventListener() {
+                                                @Override
+                                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                                    // Result will be holded Here
 
 //                                            availableUsersList.clear();
 //                                            for (DataSnapshot snapshot1 : snapshot.getChildren()) {
@@ -151,32 +152,35 @@ public class OTPActivity extends AppCompatActivity {
 //                                                }
 //                                            }
 
-                                                Intent intent;
+                                                    Intent intent;
 //                                            AvailableUser availableUser = new AvailableUser(mName, phonenumber_ccode, );
-                                                if (snapshot.exists()) {
-                                                    intent = new Intent(OTPActivity.this, MainActivity.class);
-                                                    intent.putExtra("users", Parcels.wrap(getAllUsers()));
-                                                } else {
-                                                    intent = new Intent(OTPActivity.this, SetupProfileActivity.class);
+                                                    if (snapshot.exists()) {
+                                                        intent = new Intent(OTPActivity.this, MainActivity.class);
+                                                        intent.putExtra("users", Parcels.wrap(getAllUsers()));
+                                                    } else {
+                                                        intent = new Intent(OTPActivity.this, SetupProfileActivity.class);
+                                                    }
+                                                    startActivity(intent);
+                                                    finishAffinity();
+                                                    Toast.makeText(OTPActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
+
                                                 }
-                                                startActivity(intent);
-                                                finishAffinity();
-                                                Toast.makeText(OTPActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
 
-                                            }
+                                                @Override
+                                                public void onCancelled(@NonNull DatabaseError error) {
 
-                                            @Override
-                                            public void onCancelled(@NonNull DatabaseError error) {
-
-                                            }
-                                        });
+                                                }
+                                            });
+                                }
+                            } else {
+                                Toast.makeText(OTPActivity.this, "Login Failed", Toast.LENGTH_SHORT).show();
                             }
                         }
-                        else {
-                        Toast.makeText(OTPActivity.this, "Login Failed", Toast.LENGTH_SHORT).show();
-                    }
+                    });
+
+                } catch (Exception e){
+                    e.printStackTrace();
                 }
-            });
         }
     });
 

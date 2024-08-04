@@ -28,6 +28,7 @@ import com.bymjk.txtme.Components.FirebaseClientImplementation;
 import com.bymjk.txtme.Components.GenericCallback;
 import com.bymjk.txtme.Components.HelperFunctions;
 import com.bymjk.txtme.Components.MyUsersList;
+import com.bymjk.txtme.Components.SemverUtils;
 import com.bymjk.txtme.Components.UpdateDialog;
 import com.bymjk.txtme.DB.FirebaseToRoomSync;
 import com.bymjk.txtme.DB.UserRepository;
@@ -198,10 +199,12 @@ public class MainActivity extends AppCompatActivity {
             newVersion = appVersion.getAppVersion();
             newUrl = appVersion.getAppUrl();
             newTimestamp = appVersion.getAppUpdateTimestamp();
+            String currentAppVersion = BuildConfig.VERSION_NAME;
 
             daysDiffToUpdate = HelperFunctions.getDaysDiff(newTimestamp, System.currentTimeMillis());
 
-            if (!BuildConfig.VERSION_NAME.equals(newVersion)) {
+            boolean isAppUpdateAvailable = SemverUtils.getSemverStringToInteger(newVersion) > SemverUtils.getSemverStringToInteger(currentAppVersion);
+            if (isAppUpdateAvailable) {
                 UpdateDialog updateDialog = new UpdateDialog();
                 updateDialog.ShowUpdateDialog(this, appVersion, daysDiffToUpdate, MainActivity.this);
             }
