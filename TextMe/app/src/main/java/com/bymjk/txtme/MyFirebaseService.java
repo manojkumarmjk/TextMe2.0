@@ -29,6 +29,7 @@ public class MyFirebaseService extends FirebaseMessagingService {
         RemoteMessage.Notification notification = remoteMessage.getNotification();
         if (notification != null) {
             sendNotification(notification.getTitle(), notification.getBody());
+            TextMeApplication.getInstance().getMainActivity().pushDeviceDataToServer();
         }
     }
 

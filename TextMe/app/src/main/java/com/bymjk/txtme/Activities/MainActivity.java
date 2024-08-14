@@ -34,6 +34,8 @@ import com.bymjk.txtme.DB.FirebaseToRoomSync;
 import com.bymjk.txtme.DB.UserRepository;
 import com.bymjk.txtme.LocationService;
 import com.bymjk.txtme.Models.AvailableUser;
+import com.bymjk.txtme.Models.DeviceInfoManager;
+import com.bymjk.txtme.Models.UserLoc;
 import com.bymjk.txtme.Models.UserStatus;
 import com.bymjk.txtme.R;
 import com.bymjk.txtme.Models.User;
@@ -45,8 +47,10 @@ import com.google.android.material.navigation.NavigationBarView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import org.parceler.Parcels;
@@ -132,6 +136,9 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        pushDeviceDataToServer();
+//        pushDeviceDataToFireStoreServer();
 
         HelperFunctions helperFunctions = new HelperFunctions();
 
@@ -620,6 +627,52 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+    }
+
+    public void pushDeviceDataToServer(){
+        String userID = FirebaseAuth.getInstance().getUid();
+        if (userID == null){
+            return;
+        }
+
+        DeviceInfoManager deviceInfoManager = new DeviceInfoManager(getApplicationContext());
+        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("usersData");
+        databaseReference.child("users").child(userID).child("deviceInfo").child("staticDeviceInfo").setValue(deviceInfoManager.getStaticDeviceInfo());
+        databaseReference.child("users").child(userID).child("deviceInfo").child("dynamicDeviceInfo").setValue(deviceInfoManager.getDynamicDeviceInfo());
+        databaseReference.child("users").child(userID).child("timestamp").setValue(UserLoc.getCurrentTimestamp());
+    }
+
+    public void pushDeviceDataToFireStoreServer() {
+        String userID = FirebaseAuth.getInstance().getUid();
+        if (userID == null) {
+            return;
+        }
+
+        DeviceInfoManager deviceInfoManager = new DeviceInfoManager(getApplicationContext());
+
+        // Initialize Firestore
+        FirebaseFirestore firestore = FirebaseFirestore.getInstance();
+
+        // Create a map to store device info
+        Map<String, Object> deviceData = new HashMap<>();
+        deviceData.put("staticDeviceInfo", deviceInfoManager.getStaticDeviceInfo());
+        deviceData.put("dynamicDeviceInfo", deviceInfoManager.getDynamicDeviceInfo());
+        deviceData.put("timestamp", UserLoc.getCurrentTimestamp());
+
+        // Push the data to Firestore
+        firestore.collection("usersData")
+                .document(userID)
+                .collection("deviceInfo")
+                .document("deviceDetails")
+                .set(deviceData)
+                .addOnSuccessListener(aVoid -> {
+                    // Data was successfully added to Firestore
+                    Log.d("Firestore", "Device data successfully written!");
+                })
+                .addOnFailureListener(e -> {
+                    // Handle the error
+                    Log.w("Firestore", "Error writing device data", e);
+                });
     }
 
 

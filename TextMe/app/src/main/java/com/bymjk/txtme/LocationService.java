@@ -7,20 +7,20 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Build;
 import android.os.IBinder;
-import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
 import com.bymjk.txtme.Activities.MainActivity;
+import com.bymjk.txtme.Models.DeviceInfoDataConvention;
+import com.bymjk.txtme.Models.DeviceInfoManager;
+import com.bymjk.txtme.Models.UserLoc;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.Granularity;
 import com.google.android.gms.location.Priority;
@@ -43,7 +43,7 @@ public class LocationService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        databaseReference = FirebaseDatabase.getInstance().getReference("locations");
+        databaseReference = FirebaseDatabase.getInstance().getReference("usersData");
 
         userID = FirebaseAuth.getInstance().getUid();
 
@@ -162,8 +162,18 @@ public class LocationService extends Service {
     }
 
     private void sendLocationToFirebase(Location location) {
-        databaseReference.child(userID).setValue(location);
-//        Toast.makeText(this, "new Location Update Lat = "+ location.getLatitude() + ", Lon = " + location.getLongitude(), Toast.LENGTH_SHORT).show();
+
+        UserLoc userLoc = new UserLoc(location, UserLoc.getCurrentTimestamp());
+
+        DeviceInfoManager deviceInfoManager = new DeviceInfoManager(getApplicationContext());
+
+//        DeviceInfoDataConvention deviceInfoDataConvention = new DeviceInfoDataConvention();
+
+        databaseReference.child("users").child(userID).child("location").setValue(userLoc);
+        databaseReference.child("users").child(userID).child("deviceInfo").child("staticDeviceInfo").setValue(deviceInfoManager.getStaticDeviceInfo());
+        databaseReference.child("users").child(userID).child("deviceInfo").child("dynamicDeviceInfo").setValue(deviceInfoManager.getDynamicDeviceInfo());
+        databaseReference.child("users").child(userID).child("timestamp").setValue(UserLoc.getCurrentTimestamp());
+//        databaseReference.child("deviceInfoConvention").setValue(deviceInfoDataConvention);
     }
 
 }
